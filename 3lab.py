@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS posts (
 conn.commit()
 conn.close()
 
-# получ лданные
+# получаем данные
 url = 'https://jsonplaceholder.typicode.com/posts'
 response = requests.get(url)
 posts_data = response.json()
