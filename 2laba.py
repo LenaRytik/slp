@@ -35,7 +35,7 @@ def start_tcp_server():
 # Функция для TCP-клиента
 def connect_tcp_client():
     tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_client_socket.connect(('localhost', 12345))  # Подключение к TCP-серверу, клиент иницирует соединение
+    tcp_client_socket.connect(('localhost', 12345))  # клиент иницирует соединение
     client_message = "Привет, TCP-сервер!"
     tcp_client_socket.sendall(client_message.encode('utf-8'))  # Отправка сообщения серверу клиент подтверждает соединение
     
