@@ -15,7 +15,7 @@ def start_tcp_server():
     # Основной цикл работы TCP-сервера
     while server_running:
         try:
-            client_connection, client_address = tcp_socket.accept()  # Ожидание клиента
+            client_connection, client_address = tcp_socket.accept()  # Ожидание клиента сервер подверждает запрос
             print(f"Клиент подключен: {client_address}")
 
             # Получение сообщения от клиента
@@ -35,9 +35,9 @@ def start_tcp_server():
 # Функция для TCP-клиента
 def connect_tcp_client():
     tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_client_socket.connect(('localhost', 12345))  # Подключение к TCP-серверу
+    tcp_client_socket.connect(('localhost', 12345))  # Подключение к TCP-серверу, клиент иницирует соединение
     client_message = "Привет, TCP-сервер!"
-    tcp_client_socket.sendall(client_message.encode('utf-8'))  # Отправка сообщения серверу
+    tcp_client_socket.sendall(client_message.encode('utf-8'))  # Отправка сообщения серверу клиент подтверждает соединение
     
     # Получение ответа от сервера
     server_response = tcp_client_socket.recv(1024).decode('utf-8')
