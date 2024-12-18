@@ -4,14 +4,15 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QDialog, QLabel, QFormLayout, QDialogButtonBox)
 from PyQt5.QtSql import QSqlDatabase, QSqlTableModel
 import sqlite3
-# QApplication: Основной класс для управления приложением.
+
+# Основной класс для управления приложением.
 # QMainWindow: Основное окно приложения.
 # QTableView: Виджет для отображения табличных данных.
 # QVBoxLayout, QHBoxLayout: Компоновщики для размещения виджетов.
 # QLineEdit, QPushButton: Виджеты для ввода текста и кнопок.
-# QInputDialog, QMessageBox: Диалоговые окна для ввода данных и отображения сообщений.
-# QSqlDatabase, QSqlTableModel, QSqlQuery: Классы для работы с базой данных SQLite.
-# Qt: Содержит константы, такие как Qt.Horizontal для работы с заголовками таблицы
+# QMessageBox: Диалоговое окно для отображения сообщений.
+# QDialog: Диалоговое окно для ввода данных.
+# QSqlDatabase, QSqlTableModel: Классы для работы с базой данных SQLite.
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -32,7 +33,7 @@ class MainWindow(QMainWindow):
         # Поле поиска
         self.search_field = QLineEdit()
         self.search_field.setPlaceholderText("Поиск по заголовку")
-        self.search_field.textChanged.connect(self.search)
+        self.search_field.textChanged.connect(self.search)  # Связываем изменение текста с методом поиска
         
         # Кнопки
         btn_layout = QHBoxLayout()
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow):
         self.add_button = QPushButton("Добавить")
         self.delete_button = QPushButton("Удалить")
         
+        # Связываем кнопки с соответствующими методами
         self.refresh_button.clicked.connect(self.load_data)
         self.add_button.clicked.connect(self.add_record)
         self.delete_button.clicked.connect(self.delete_record)
@@ -54,7 +56,7 @@ class MainWindow(QMainWindow):
         # Подключение к базе данных
         self.conn = sqlite3.connect('database.db')
         self.cursor = self.conn.cursor()
-        self.load_data()
+        self.load_data()  # Загружаем данные при запуске
         
         # Добавление элементов в основной layout
         layout.addWidget(self.search_field)
@@ -63,31 +65,31 @@ class MainWindow(QMainWindow):
 
     def load_data(self):
         # Загрузка данных из базы в таблицу
-        self.model = QSqlTableModel(self)
-        self.model.setTable("posts")
-        self.model.select()
+        self.model = QSqlTableModel(self)  # Создаем модель для работы с базой данных
+        self.model.setTable("posts")  # Устанавливаем таблицу для модели
+        self.model.select()  # Загружаем данные из таблицы
         
         # Отображение данных в QTableView
         self.table_view.setModel(self.model)
     
     def search(self):
         # Поиск по заголовку
-        filter_str = self.search_field.text()
-        self.model.setFilter(f"title LIKE '%{filter_str}%'")
-        self.model.select()
+        filter_str = self.search_field.text()  # Получаем текст из поля поиска
+        self.model.setFilter(f"title LIKE '%{filter_str}%'")  # Устанавливаем фильтр для модели
+        self.model.select()  # Обновляем данные в модели
     
     def add_record(self):
         # Открытие диалога для добавления новой записи
-        dialog = AddRecordDialog(self)
-        if dialog.exec():
-            user_id, title, body = dialog.get_data()
-            self.cursor.execute("INSERT INTO posts (user_id, title, body) VALUES (?, ?, ?)", (user_id, title, body))
-            self.conn.commit()
-            self.load_data()
+        dialog = AddRecordDialog(self)  # Создаем диалоговое окно
+        if dialog.exec():  # Если пользователь подтвердил ввод
+            user_id, title, body = dialog.get_data()  # Получаем данные из диалога
+            self.cursor.execute("INSERT INTO posts (user_id, title, body) VALUES (?, ?, ?)", (user_id, title, body))  # Вставляем данные в базу
+            self.conn.commit()  # Сохраняем изменения
+            self.load_data()  # Обновляем таблицу
 
     def delete_record(self):
         # Удаление выбранной записи
-        selected_row = self.table_view.currentIndex().row()
+        selected_row = self.table_view.currentIndex().row()  # Получаем индекс выбранной строки
         if selected_row < 0:
             QMessageBox.warning(self, "Ошибка", "Выберите запись для удаления.")
             return
@@ -96,9 +98,9 @@ class MainWindow(QMainWindow):
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         
         if reply == QMessageBox.Yes:
-            self.model.removeRow(selected_row)
-            self.model.submitAll()
-            self.load_data()
+            self.model.removeRow(selected_row)  # Удаляем строку из модели
+            self.model.submitAll()  # Сохраняем изменения в базе
+            self.load_data()  # Обновляем таблицу
 
 # Диалог для добавления новой записи
 class AddRecordDialog(QDialog):
@@ -106,7 +108,7 @@ class AddRecordDialog(QDialog):
         super().__init__(parent)
         
         self.setWindowTitle("Добавить запись")
-        self.setLayout(QFormLayout())
+        self.setLayout(QFormLayout())  # Устанавливаем layout для диалога
         
         # Поля для ввода данных
         self.user_id_field = QLineEdit()
@@ -115,8 +117,8 @@ class AddRecordDialog(QDialog):
         
         # Кнопки для подтверждения или отмены добавления
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
+        button_box.accepted.connect(self.accept)  # Связываем кнопку "ОК" с подтверждением
+        button_box.rejected.connect(self.reject)  # Связываем кнопку "Отмена" с отменой
         
         # Добавление полей и кнопок в layout
         self.layout().addRow("User ID:", self.user_id_field)
