@@ -4,7 +4,14 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QDialog, QLabel, QFormLayout, QDialogButtonBox)
 from PyQt5.QtSql import QSqlDatabase, QSqlTableModel
 import sqlite3
-
+# QApplication: Основной класс для управления приложением.
+# QMainWindow: Основное окно приложения.
+# QTableView: Виджет для отображения табличных данных.
+# QVBoxLayout, QHBoxLayout: Компоновщики для размещения виджетов.
+# QLineEdit, QPushButton: Виджеты для ввода текста и кнопок.
+# QInputDialog, QMessageBox: Диалоговые окна для ввода данных и отображения сообщений.
+# QSqlDatabase, QSqlTableModel, QSqlQuery: Классы для работы с базой данных SQLite.
+# Qt: Содержит константы, такие как Qt.Horizontal для работы с заголовками таблицы
 
 class MainWindow(QMainWindow):
     def __init__(self):
