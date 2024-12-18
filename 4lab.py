@@ -1,137 +1,129 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QPushButton, QLineEdit, QTableView, 
-                             QMessageBox, QDialog, QLabel, QFormLayout, QDialogButtonBox)
-from PyQt5.QtSql import QSqlDatabase, QSqlTableModel
 import sqlite3
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTableView, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QWidget, QMessageBox
+from PyQt5.QtCore import Qt, QAbstractTableModel, QModelIndex
 
-# Основной класс для управления приложением.
-# QMainWindow: Основное окно приложения.
-# QTableView: Виджет для отображения табличных данных.
-# QVBoxLayout, QHBoxLayout: Компоновщики для размещения виджетов.
-# QLineEdit, QPushButton: Виджеты для ввода текста и кнопок.
-# QMessageBox: Диалоговое окно для отображения сообщений.
-# QDialog: Диалоговое окно для ввода данных.
-# QSqlDatabase, QSqlTableModel: Классы для работы с базой данных SQLite.
+# подрубаемся к базе данных SQLite
+conn = sqlite3.connect('posts.db')
+cursor = conn.cursor()
 
+# создаем таблицу posts
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        title TEXT,
+        body TEXT
+    )
+''')
+conn.commit() # фиксируем изменения в бд
+
+# Модель данных для таблицы
+class PostsTableModel(QAbstractTableModel):
+    def __init__(self, data):
+        super().__init__()
+        self._data = data # тут хранятся данные
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._data)
+
+    def columnCount(self, parent=QModelIndex()):
+        return len(self._data[0]) if self.rowCount() > 0 else 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            row = index.row()
+            column = index.column()
+            return str(self._data[row][column])
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return ["ID", "User ID", "Заголовок", "Текст"][section]
+            if orientation == Qt.Vertical:
+                return str(section + 1)
+
+# Главное окно приложения
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Приложение")
+        self.setGeometry(100, 100, 800, 600)
 
-        # Настройка главного окна
-        self.setWindowTitle("Database App")
-        self.resize(600, 400)
-        
-        # Основной виджет
-        widget = QWidget()
-        self.setCentralWidget(widget)
-        
-        # Основной layout
-        layout = QVBoxLayout()
-        widget.setLayout(layout)
-        
-        # Поле поиска
-        self.search_field = QLineEdit()
-        self.search_field.setPlaceholderText("Поиск по заголовку")
-        self.search_field.textChanged.connect(self.search)  # Связываем изменение текста с методом поиска
-        
-        # Кнопки
-        btn_layout = QHBoxLayout()
-        self.refresh_button = QPushButton("Обновить")
-        self.add_button = QPushButton("Добавить")
-        self.delete_button = QPushButton("Удалить")
-        
-        # Связываем кнопки с соответствующими методами
-        self.refresh_button.clicked.connect(self.load_data)
-        self.add_button.clicked.connect(self.add_record)
-        self.delete_button.clicked.connect(self.delete_record)
-        
-        btn_layout.addWidget(self.refresh_button)
-        btn_layout.addWidget(self.add_button)
-        btn_layout.addWidget(self.delete_button)
-        
-        # Таблица для отображения данных
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+
+        # макет
+        self.layout = QVBoxLayout(self.central_widget)
+
+        # таблица для данных
         self.table_view = QTableView()
-        
-        # Подключение к базе данных
-        self.conn = sqlite3.connect('database.db')
-        self.cursor = self.conn.cursor()
-        self.load_data()  # Загружаем данные при запуске
-        
-        # Добавление элементов в основной layout
-        layout.addWidget(self.search_field)
-        layout.addLayout(btn_layout)
-        layout.addWidget(self.table_view)
+        self.layout.addWidget(self.table_view)
+
+        # поле поиска
+        self.search_line_edit = QLineEdit()
+        self.search_line_edit.setPlaceholderText("Поиск по заголовку...")
+        self.search_line_edit.textChanged.connect(self.filter_data)
+        self.layout.addWidget(self.search_line_edit)
+
+        # кнопки
+        self.buttons_layout = QHBoxLayout()
+        self.layout.addLayout(self.buttons_layout)
+
+        self.update_button = QPushButton("Обновить")
+        self.update_button.clicked.connect(self.load_data)
+        self.buttons_layout.addWidget(self.update_button)
+
+        self.add_button = QPushButton("Добавить")
+        self.add_button.clicked.connect(self.add_record)
+        self.buttons_layout.addWidget(self.add_button)
+
+        self.delete_button = QPushButton("Удалить")
+        self.delete_button.clicked.connect(self.delete_record)
+        self.buttons_layout.addWidget(self.delete_button)
+
+        # Загрузка данных
+        self.load_data()
 
     def load_data(self):
-        # Загрузка данных из базы в таблицу
-        self.model = QSqlTableModel(self)  # Создаем модель для работы с базой данных
-        self.model.setTable("posts")  # Устанавливаем таблицу для модели
-        self.model.select()  # Загружаем данные из таблицы
-        
-        # Отображение данных в QTableView
+        """Загрузка данных из базы данных в таблицу."""
+        cursor.execute("SELECT * FROM posts")
+        data = cursor.fetchall()
+        self.model = PostsTableModel(data)
         self.table_view.setModel(self.model)
-    
-    def search(self):
-        # Поиск по заголовку
-        filter_str = self.search_field.text()  # Получаем текст из поля поиска
-        self.model.setFilter(f"title LIKE '%{filter_str}%'")  # Устанавливаем фильтр для модели
-        self.model.select()  # Обновляем данные в модели
-    
+
+    def filter_data(self):
+        """Поиска по заголовку."""
+        search_text = self.search_line_edit.text().lower()
+        cursor.execute("SELECT * FROM posts WHERE LOWER(title) LIKE ?", ('%' + search_text + '%',))
+        filtered_data = cursor.fetchall()
+        self.model = PostsTableModel(filtered_data)
+        self.table_view.setModel(self.model)
+
     def add_record(self):
-        # Открытие диалога для добавления новой записи
-        dialog = AddRecordDialog(self)  # Создаем диалоговое окно
-        if dialog.exec():  # Если пользователь подтвердил ввод
-            user_id, title, body = dialog.get_data()  # Получаем данные из диалога
-            self.cursor.execute("INSERT INTO posts (user_id, title, body) VALUES (?, ?, ?)", (user_id, title, body))  # Вставляем данные в базу
-            self.conn.commit()  # Сохраняем изменения
-            self.load_data()  # Обновляем таблицу
+        """Добавление новой записи в базу данных."""
+        user_id = 1  
+        title = "Новый пост"
+        body = "Содержание нового поста: пахпаххвывхахва"
+
+        cursor.execute("INSERT INTO posts (user_id, title, body) VALUES (?, ?, ?)", (user_id, title, body))
+        conn.commit()
+        self.load_data()  
 
     def delete_record(self):
-        # Удаление выбранной записи
-        selected_row = self.table_view.currentIndex().row()  # Получаем индекс выбранной строки
-        if selected_row < 0:
+        """Удаление выбранной записи."""
+        selected_row = self.table_view.currentIndex().row()
+        if selected_row >= 0:
+            post_id = self.model._data[selected_row][0]
+            cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+            conn.commit()
+            self.load_data()  # обнова таблицы
+        else:
             QMessageBox.warning(self, "Ошибка", "Выберите запись для удаления.")
-            return
-        
-        reply = QMessageBox.question(self, "Удаление", "Вы уверены, что хотите удалить выбранную запись?", 
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        
-        if reply == QMessageBox.Yes:
-            self.model.removeRow(selected_row)  # Удаляем строку из модели
-            self.model.submitAll()  # Сохраняем изменения в базе
-            self.load_data()  # Обновляем таблицу
 
-# Диалог для добавления новой записи
-class AddRecordDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        
-        self.setWindowTitle("Добавить запись")
-        self.setLayout(QFormLayout())  # Устанавливаем layout для диалога
-        
-        # Поля для ввода данных
-        self.user_id_field = QLineEdit()
-        self.title_field = QLineEdit()
-        self.body_field = QLineEdit()
-        
-        # Кнопки для подтверждения или отмены добавления
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)  # Связываем кнопку "ОК" с подтверждением
-        button_box.rejected.connect(self.reject)  # Связываем кнопку "Отмена" с отменой
-        
-        # Добавление полей и кнопок в layout
-        self.layout().addRow("User ID:", self.user_id_field)
-        self.layout().addRow("Title:", self.title_field)
-        self.layout().addRow("Body:", self.body_field)
-        self.layout().addWidget(button_box)
-        
-    def get_data(self):
-        # Получение данных из полей
-        return int(self.user_id_field.text()), self.title_field.text(), self.body_field.text()
 
-# Запуск приложения
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-app.exec()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
